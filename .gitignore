@@ -155,15 +155,3 @@ Desktop.ini
 # Temporary files
 *.tmp
 *.temp 
-
-# generator/results folder - track folder but ignore contents
-generator/results/*
-!generator/results/.gitkeep
-
-# generator/work folder - track folder but ignore contents
-generator/work/*
-!generator/work/.gitkeep
-
-# movie_editor/results folder - track folder but ignore contents
-movie_editor/results/*
-!movie_editor/results/.gitkeep
