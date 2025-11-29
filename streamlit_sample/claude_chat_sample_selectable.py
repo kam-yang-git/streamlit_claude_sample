@@ -3,6 +3,7 @@ from anthropic import Anthropic
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
+import json
 
 # load environment variables
 load_dotenv()
@@ -22,6 +23,31 @@ def get_jst_now_str() -> str:
     """日本時間 (JST) の現在時刻を yyyy/mm/dd hh:mm:ss 形式で返す。"""
     jst = timezone(timedelta(hours=9))
     return datetime.now(jst).strftime("%Y/%m/%d %H:%M:%S")
+
+
+def format_chat_as_markdown(messages) -> str:
+    """チャット履歴を Markdown 文字列に整形する。"""
+    lines = ["# Chat Transcript", ""]
+    for msg in messages:
+        role = msg.get("role", "assistant")
+        content = msg.get("content", "")
+        timestamp = msg.get("timestamp", "")
+        model_name = msg.get("model")
+
+        if role == "user":
+            header = f"## User ({timestamp})"
+        else:
+            if model_name:
+                header = f"## Assistant - {model_name} ({timestamp})"
+            else:
+                header = f"## Assistant ({timestamp})"
+
+        lines.append(header)
+        lines.append("")
+        lines.append(content)
+        lines.append("")
+
+    return "\n".join(lines)
 
 
 # Initialize Anthropic client
@@ -169,3 +195,30 @@ if prompt := st.chat_input("メッセージを入力してください"):
                     "model": assistant_model,
                 }
             )
+
+# チャット保存エリア（入力欄の下に固定表示）
+st.markdown("---")
+st.subheader("チャットの保存")
+
+if st.session_state.messages:
+    # JSON 文字列と Markdown 文字列を用意
+    chat_json_str = json.dumps(st.session_state.messages, ensure_ascii=False, indent=2)
+    chat_md_str = format_chat_as_markdown(st.session_state.messages)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.download_button(
+            label="このチャットを JSON で保存",
+            data=chat_json_str.encode("utf-8"),
+            file_name=f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+        )
+    with col2:
+        st.download_button(
+            label="このチャットを Markdown で保存",
+            data=chat_md_str.encode("utf-8"),
+            file_name=f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+            mime="text/markdown",
+        )
+else:
+    st.info("保存できるチャット履歴がまだありません。")
