@@ -2,6 +2,7 @@ import streamlit as st
 from anthropic import Anthropic
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timezone, timedelta
 
 # load environment variables
 load_dotenv()
@@ -15,6 +16,13 @@ if HTTP_PROXY:
     os.environ["HTTP_PROXY"] = HTTP_PROXY
 if HTTPS_PROXY:
     os.environ["HTTPS_PROXY"] = HTTPS_PROXY
+
+
+def get_jst_now_str() -> str:
+    """日本時間 (JST) の現在時刻を yyyy/mm/dd hh:mm:ss 形式で返す。"""
+    jst = timezone(timedelta(hours=9))
+    return datetime.now(jst).strftime("%Y/%m/%d %H:%M:%S")
+
 
 # Initialize Anthropic client
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -66,7 +74,9 @@ if "messages" not in st.session_state:
     st.session_state["messages"] = [
         {
             "role": "assistant",
-            "content": "こんにちは！何かお手伝いできますか？"
+            "content": "こんにちは！何かお手伝いできますか？",
+            "timestamp": get_jst_now_str(),
+            "model": None,
         }
     ]
 
@@ -94,15 +104,40 @@ if not chat_started:
 
 # display chat history
 for msg in st.session_state.messages:
+    timestamp = msg.get("timestamp")
+    model_name = msg.get("model")
+
     if msg["role"] == "user":
-        st.chat_message("user").write(msg["content"])
+        with st.chat_message("user"):
+            st.write(msg["content"])
+            if timestamp:
+                st.caption(f"投稿時刻 (JST): {timestamp}")
     else:
-        st.chat_message("assistant").write(msg["content"])
+        with st.chat_message("assistant"):
+            st.write(msg["content"])
+            caption_parts = []
+            if model_name:
+                caption_parts.append(f"モデル: {model_name}")
+            if timestamp:
+                caption_parts.append(f"投稿時刻 (JST): {timestamp}")
+            if caption_parts:
+                st.caption(" / ".join(caption_parts))
 
 # user input
 if prompt := st.chat_input("メッセージを入力してください"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
+    # ユーザー投稿を保存（JST 時刻付き）
+    user_timestamp = get_jst_now_str()
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": prompt,
+            "timestamp": user_timestamp,
+        }
+    )
+
+    with st.chat_message("user"):
+        st.write(prompt)
+        st.caption(f"投稿時刻 (JST): {user_timestamp}")
 
     # Claude API call
     with st.chat_message("assistant"):
@@ -117,7 +152,20 @@ if prompt := st.chat_input("メッセージを入力してください"):
             )
             reply = response.content[0].text
 
+            # AI レスポンスのメタ情報
+            assistant_timestamp = get_jst_now_str()
+            assistant_model = st.session_state["model"]
+
             st.write(reply)
+            st.caption(
+                f"モデル: {assistant_model} / 投稿時刻 (JST): {assistant_timestamp}"
+            )
+
             st.session_state.messages.append(
-                {"role": "assistant", "content": reply}
+                {
+                    "role": "assistant",
+                    "content": reply,
+                    "timestamp": assistant_timestamp,
+                    "model": assistant_model,
+                }
             )
