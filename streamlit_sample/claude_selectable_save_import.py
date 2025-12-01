@@ -1,3 +1,7 @@
+"""
+"Claude API" を使用したシンプルなチャットアプリ
+モデル選択とチャットの保存（JSON と Markdown）、チャットの復元（JSON のみ）が可能。
+"""
 import streamlit as st
 from anthropic import Anthropic
 import os
@@ -80,10 +84,11 @@ def get_available_models():
     except Exception as e:
         # API エラー時は固定の候補を返す
         return [
-            "claude-3-7-sonnet-20250219",
-            "claude-3-7-haiku-20250219",
-            "claude-3-5-sonnet-20241022",
-            "claude-3-5-haiku-20241022",
+            "claude-sonnet-4-5-20250929",
+            "claude-sonnet-4-20250514",
+            "claude-opus-4-5-20251101",
+            "claude-opus-4-1-20250805",
+            "claude-haiku-4-5-20251001",
         ]
 
 
@@ -196,9 +201,85 @@ if prompt := st.chat_input("メッセージを入力してください"):
                 }
             )
 
-# チャット保存エリア（入力欄の下に固定表示）
+# チャット復元・保存エリア（入力欄の下に固定表示）
 st.markdown("---")
-st.subheader("チャットの保存")
+st.subheader("チャットの復元・保存")
+
+# チャットの復元
+st.markdown("#### チャットの復元")
+uploaded_file = st.file_uploader(
+    "保存したJSONファイルをアップロードしてチャットを復元",
+    type=["json"],
+    help="以前保存したチャット履歴のJSONファイルを選択してください。",
+)
+
+# 最後に処理したファイルIDを追跡（同じファイルの再処理を防ぐ）
+if "last_processed_file_id" not in st.session_state:
+    st.session_state["last_processed_file_id"] = None
+
+if uploaded_file is not None:
+    # ファイルIDを取得（Streamlitのファイルアップローダーはfile_id属性を持っている）
+    current_file_id = getattr(uploaded_file, "file_id", None)
+    if current_file_id is None:
+        # file_idがない場合は、ファイル名とサイズの組み合わせで識別
+        current_file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+    
+    # 既に処理済みのファイルの場合はスキップ（何も表示しない）
+    if st.session_state["last_processed_file_id"] != current_file_id:
+        try:
+            # JSONファイルを読み込む（ファイルポインタを先頭に戻す）
+            uploaded_file.seek(0)
+            loaded_messages = json.load(uploaded_file)
+            
+            # 基本的な検証
+            if not isinstance(loaded_messages, list):
+                st.error("❌ 無効なJSON形式です。メッセージの配列である必要があります。")
+            elif len(loaded_messages) == 0:
+                st.error("❌ チャット履歴が空です。")
+            else:
+                # 各メッセージの形式を検証
+                valid = True
+                for i, msg in enumerate(loaded_messages):
+                    if not isinstance(msg, dict):
+                        st.error(f"❌ {i+1}番目のメッセージが無効な形式です。")
+                        valid = False
+                        break
+                    if "role" not in msg or "content" not in msg:
+                        st.error(f"❌ {i+1}番目のメッセージに 'role' または 'content' がありません。")
+                        valid = False
+                        break
+                    if msg["role"] not in ["user", "assistant"]:
+                        st.error(f"❌ {i+1}番目のメッセージの 'role' が無効です。")
+                        valid = False
+                        break
+                
+                if valid:
+                    # 復元実行
+                    st.session_state["messages"] = loaded_messages
+                    
+                    # モデル情報を復元（最初のassistantメッセージから取得）
+                    for msg in loaded_messages:
+                        if msg.get("role") == "assistant" and msg.get("model"):
+                            st.session_state["model"] = msg["model"]
+                            break
+                    
+                    # 処理済みファイルIDを記録
+                    st.session_state["last_processed_file_id"] = current_file_id
+                    
+                    st.success(f"✅ チャット履歴を復元しました（{len(loaded_messages)}件のメッセージ）。")
+                    st.rerun()  # 画面を再描画して復元された履歴を表示
+                    
+        except json.JSONDecodeError as e:
+            st.error(f"❌ JSONの解析に失敗しました: {e}")
+        except Exception as e:
+            st.error(f"❌ エラーが発生しました: {e}")
+else:
+    # ファイルがクリアされたら、処理済みフラグもクリア
+    if st.session_state["last_processed_file_id"] is not None:
+        st.session_state["last_processed_file_id"] = None
+
+st.markdown("---")
+st.markdown("#### チャットの保存")
 
 if st.session_state.messages:
     # JSON 文字列と Markdown 文字列を用意

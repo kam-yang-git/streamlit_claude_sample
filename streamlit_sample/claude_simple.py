@@ -1,3 +1,7 @@
+"""
+"Claude API" を使用したシンプルなチャットアプリ
+"claude-sonnet-4-20250514" を使用。
+"""
 import streamlit as st
 from anthropic import Anthropic
 import os
@@ -48,7 +52,7 @@ if prompt := st.chat_input("メッセージを入力してください"):
     with st.chat_message("assistant"):
         with st.spinner("考え中..."):
             response = client.messages.create(
-                model="claude-4-sonnet-20250514",
+                model="claude-sonnet-4-20250514",
                 max_tokens=1000,
                 messages=[
                     {"role": m["role"], "content": m["content"]}

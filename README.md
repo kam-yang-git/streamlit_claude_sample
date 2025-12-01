@@ -1,6 +1,6 @@
 ## Streamlit Claude Chat Sample
 
-このリポジトリは、Anthropic Claude API を使ったシンプルなチャット UI のサンプルです。  
+このリポジトリは、Anthropic Claude API を使ったチャット UI のサンプル集です。  
 `streamlit` を利用してブラウザ上にチャット画面を表示し、Claude との対話を行います。
 
 ---
@@ -12,7 +12,6 @@
   - `streamlit`
   - `anthropic`
   - `python-dotenv`
-- **Claude のモデル**: `claude-4-sonnet-20250514`
 
 ---
 
@@ -42,7 +41,6 @@ pip install -r requirements.txt
 
 ## 環境変数の設定
 
-`streamlit_sample/claude_chat_sample.py` では `python-dotenv` を用いて `.env` ファイルから環境変数を読み込んでいます。  
 ルートディレクトリの `.env_sample` をコピーして `.env` にリネームし、以下のように設定してください。
 
 ```env
@@ -61,19 +59,43 @@ HTTPS_PROXY= # 必要な場合のみ
 ルートディレクトリ（`streamlit_claude_sample`）で以下を実行します。
 
 ```bash
-streamlit run streamlit_sample/claude_chat_sample.py
+streamlit run streamlit_sample/<ファイル名>.py
 ```
 
 コマンド実行後、ブラウザが自動的に開くか、コンソールに表示される URL（通常は `http://localhost:8501`）にアクセスするとチャット画面が表示されます。
 
 ---
 
-## アプリの概要
+## 各アプリの機能一覧
 
-- 画面上部にタイトル **"Claude Chat Sample"** が表示されます。
-- 画面下部の入力欄からメッセージを送信すると、セッション内の会話履歴を元に Claude が返信します。
-- 会話履歴は `st.session_state["messages"]` に保存され、ページを再読み込みするまで維持されます。
-- Claude のモデルを変更したい場合は、`claude_chat_sample.py` の51行目を変更してください。
+| ファイル名 | 機能概要 | 主な特徴 |
+|-----------|---------|---------|
+| `claude_simple.py` | シンプルなチャットアプリ | 基本的なチャット機能のみ。モデルは `claude-sonnet-4-20250514` 固定。会話履歴はセッション内で保持。 |
+| `claude_selectable_save.py` | モデル選択・保存機能付きチャット | モデル選択機能（APIから取得）、タイムスタンプ表示、チャット履歴の保存（JSON/Markdown形式）。チャット開始後はモデル変更不可。 |
+| `claude_selectable_save_import.py` | 復元機能付きチャット | 上記の機能に加えて、保存したJSONファイルからチャット履歴を復元する機能を追加。 |
+
+### 詳細説明
+
+#### `claude_simple.py`
+最もシンプルな実装。基本的なチャット機能のみを提供します。
+- 固定モデル（`claude-sonnet-4-20250514`）を使用
+- セッション内で会話履歴を保持
+- シンプルなUI
+
+#### `claude_selectable_save.py`
+モデル選択とチャット保存機能を追加したバージョン。
+- **モデル選択**: Anthropic APIから利用可能なClaudeモデル一覧を取得し、選択可能
+- **タイムスタンプ**: 各メッセージに日本時間（JST）のタイムスタンプを表示
+- **チャット保存**: 
+  - JSON形式で保存（メタ情報含む）
+  - Markdown形式で保存（読みやすい形式）
+- **モデル固定**: チャット開始後はモデル変更不可（一貫性のため）
+
+#### `claude_selectable_save_import.py`
+チャット復元機能を追加したバージョン。
+- `claude_selectable_save.py` の全機能を含む
+- **チャット復元**: 保存したJSONファイルをアップロードして、以前の会話を復元可能
+- 復元時にはモデル情報も自動的に復元
 
 ---
 
@@ -85,4 +107,4 @@ streamlit run streamlit_sample/claude_chat_sample.py
   - プロキシが必要な場合は、`HTTP_PROXY` / `HTTPS_PROXY` を適切な値に設定してください。
 - **ポートがすでに使用されているエラー**:
   - 他の `streamlit` アプリなどが `8501` ポートを使用している可能性があります。
-  - `streamlit run streamlit_sample/claude_chat_sample.py --server.port 8502` など、別ポートを指定して起動してください。
+  - `streamlit run streamlit_sample/<ファイル名>.py --server.port 8502` など、別ポートを指定して起動してください。
